@@ -1,22 +1,30 @@
 #!/bin/bash
 
-# Add the Helm repository for PostgreSQL
+# Add Bitnami repository
 helm repo add bitnami https://charts.bitnami.com/bitnami
 
-# Update the Helm repositories
+# Update Helm repositories
 helm repo update
 
-# Set strong username and password
-POSTGRES_USERNAME="your_username"
-POSTGRES_PASSWORD="your_strong_password"
+# Install PostgreSQL with Helm
+helm install my-postgres bitnami/postgresql
 
-# Install PostgreSQL using Helm with the provided credentials
-helm install my-postgres bitnami/postgresql \
-  --set postgresqlUsername=$POSTGRES_USERNAME \
-  --set postgresqlPassword=$POSTGRES_PASSWORD \
-  --set postgresqlDatabase=mydatabase
+# Wait for PostgreSQL to be ready
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=my-postgres -n default
 
-# Wait for the PostgreSQL deployment to be ready
-kubectl wait --for=condition=ready pod -l app=my-postgres --timeout=300s
+# Get PostgreSQL credentials and connection details
+export POSTGRES_PASSWORD=$(kubectl get secret --namespace default my-postgres-postgresql -o jsonpath="{.data.postgres-password}" | base64 --decode)
+export POSTGRES_USERNAME=$(kubectl get secret --namespace default my-postgres-postgresql -o jsonpath="{.data.postgres-username}" | base64 --decode)
+export POSTGRES_HOST=$(kubectl get svc --namespace default my-postgres-postgresql -o jsonpath="{.spec.clusterIP}")
+export POSTGRES_PORT=5432
 
-echo "PostgreSQL installed successfully with strong credentials!"
+echo "PostgreSQL Username: $POSTGRES_USERNAME"
+echo "PostgreSQL Password: $POSTGRES_PASSWORD"
+echo "PostgreSQL Host: $POSTGRES_HOST"
+echo "PostgreSQL Port: $POSTGRES_PORT"
+
+echo "PostgreSQL has been successfully deployed."
+
+# Clean up Helm installation (optional)
+# helm uninstall my-postgres
+
